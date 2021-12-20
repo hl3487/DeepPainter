@@ -16,6 +16,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
 
+n=256
 
 def reduce_resolution(original_path, standardized_path, new_resolution):
     """
@@ -64,7 +65,7 @@ def pad_image(original_path, standardized_path):
     new_image.save(standardized_path)                                           # save padded image
 
 
-def standardize_images(resolution=(256, 256), artists=PAINTER_DICT.keys(),
+def standardize_images(resolution=(n, n), artists=PAINTER_DICT.keys(),
                        test_set=False):
     """
     Combines reduce_resolution() and pad_image().
@@ -121,7 +122,7 @@ def apply_dropout(images, dropout_rate):
     return images                                                               # return dropout image
 
 
-def get_images(artist, num_imgs, img_res=(256, 256)):
+def get_images(artist, num_imgs, img_res=(n, n)):
     """
     Load an artist's images into memory as np arrays. This function is for
     Gunnar's data files structure and is used by preprocess_images().
@@ -194,6 +195,15 @@ def get_images2(artist, num_images, test_set=False):
         if '.jpg' in image:                                                     # if file is jpg
             image = Image_PIL.open(os.path.join(artist_standardized_images_path,# load image file
                                                 image))
+#             left = int(256/6)
+#             top = int(256/6)
+#             right = int(5*256/6)
+#             bottom = int(5*256/6)
+#             image1 = image.crop((left, top, right, bottom))
+#             image = image1.resize((n,n))
+
+            image = image.resize((n,n))
+            
             im_array = np.array(image)                                          # convert to np array
             if count == 0:
                 last_shape = im_array.shape                                     # record prev shape to ensure uniform shapes
@@ -204,7 +214,7 @@ def get_images2(artist, num_images, test_set=False):
     return np.array(artist_images)                                              # return array of images
 
 
-def preprocess_images(artists=None, n_imgs=None, img_res=(256, 256), dropout_rate=None):
+def preprocess_images(artists=None, n_imgs=None, img_res=(n, n), dropout_rate=None):
     """
     Concatenate images for a list of artists to one numpy array, ready for training
 
@@ -240,7 +250,7 @@ def preprocess_images(artists=None, n_imgs=None, img_res=(256, 256), dropout_rat
         k += n_imgs
 
     for j in range(3):                                                          # Normalize pixel color values
-        X[:, :, :, j] /= 255
+        X[:, :, :, j] /= (n-1)
 
     if dropout_rate is not None:
         X = apply_dropout(X, dropout_rate)
@@ -248,7 +258,7 @@ def preprocess_images(artists=None, n_imgs=None, img_res=(256, 256), dropout_rat
     return X, y
 
 
-def preprocess_images2(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(256, 256),
+def preprocess_images2(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(n, n),
                        dropout_rate=None, normalize=False, test_set=False):
     """
     Concatenate images for a list of artists to one numpy array, ready for
@@ -282,7 +292,7 @@ def preprocess_images2(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(2
 
     if normalize:                                                               # Normalize pixel color values across all channels
         for j in range(3):
-            X[:, :, :, j] /= 255
+            X[:, :, :, j] /= (n-1)
 
     if dropout_rate is not None:                                                # apply dropout
         X = apply_dropout(X, dropout_rate)
@@ -290,7 +300,7 @@ def preprocess_images2(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(2
     return X, y
 
 
-def get_torch_data_loader(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(256, 256),
+def get_torch_data_loader(artists=list(PAINTER_DICT.keys()), n_imgs=1e8, img_res=(n, n),
                        dropout_rate=None, normalize=False, test_set=False, split=0.2, model='CAE'):
     """
     Returns a torch DataLoader object of the painting set.
@@ -337,7 +347,7 @@ def restandardize_image(ae_output):
     """
     output_max = np.max(ae_output)                                     # calculate max and min output values
     output_min = np.min(ae_output)
-    ae_output = (ae_output - output_min) / (output_max - output_min) * 255      # normalize between 0 and 255
+    ae_output = (ae_output - output_min) / (output_max - output_min) * (n-1)      # normalize between 0 and 255
     return ae_output.astype(np.uint8)                                           # convert values to int
 
 
